@@ -81,12 +81,22 @@ def _load_siftignore(base_path: Path):
 
 def run_scan(path: str, staged: bool, fail_threshold: int) -> int:
     findings = {}  # key: (file, line)
+    base_path = Path(path).resolve()
+    ignore_patterns = _load_siftignore(base_path)
+
 
     files = _get_staged_files() if staged else Path(path).rglob("*")
 
     for file in files:
-        if _should_ignore(file) or not file.is_file():
+        if not file.is_file():
             continue
+
+        if _should_ignore(file):
+            continue
+
+        if _matches_siftignore(file, ignore_patterns, base_path):
+            continue
+
 
         try:
             with open(file, "r", encoding="utf-8", errors="ignore") as f:
@@ -148,7 +158,15 @@ def run_scan(path: str, staged: bool, fail_threshold: int) -> int:
     print_report(final_findings)
 
     max_score = max((f["score"] for f in final_findings), default=0)
-    return 1 if max_score >= fail_threshold else 0
+
+    if max_score >= fail_threshold:
+        print("\n❌ Scan failed: high-risk secrets detected.")
+        print("👉 Resolve the issues above or add false positives to .siftignore\n")
+        return 1
+
+    print("\n✅ Scan passed: no high-risk secrets found.")
+    return 0
+
 
 
 
