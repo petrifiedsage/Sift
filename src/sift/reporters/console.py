@@ -4,13 +4,21 @@ def print_report(findings):
         return
 
     print("\n🚨 Potential secrets detected:\n")
+
     for f in findings:
-        extra = f" | entropy={f['entropy']}" if "entropy" in f else ""
+        detectors = []
+
+        for d in sorted(f.get("detectors", [])):
+            if d == "high-entropy-string":
+                detectors.append("entropy")
+            else:
+                detectors.append(d)
+
+        detector_str = " | ".join(detectors)
+
         print(
             f"{f['file']}:{f['line']} | "
             f"{f['classification']:<8} | "
             f"Score: {f['score']} | "
-            f"{f['rule_id']}{extra}"
+            f"{detector_str}"
         )
-
-

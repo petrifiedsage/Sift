@@ -1,0 +1,13 @@
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Docs
+*.md
+
+# Test data
+test_data/
+
+# Local configs
+.env.local
