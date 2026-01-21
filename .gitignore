@@ -1,4 +1,33 @@
+# Python
 __pycache__/
-*.pyc
-.env
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.env/
+.env.*
+
+# Packaging
+build/
+dist/
+*.egg-info/
+
+# Test & coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Tool outputs
 sift-report.json
+*.sarif
+*.log
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
