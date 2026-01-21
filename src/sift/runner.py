@@ -1,5 +1,35 @@
 from pathlib import Path
 from sift.reporters.console import print_report
+from sift.detectors.regex import scan_line
+
+IGNORE_DIRS = {
+    ".git",
+    "venv",
+    ".venv",
+    "__pycache__",
+    "node_modules",
+    "dist",
+    "build",
+    ".pytest_cache",
+}
+
+IGNORE_EXTENSIONS = {
+    ".pyc",
+    ".pyo",
+    ".exe",
+    ".dll",
+    ".zip",
+    ".tar",
+    ".gz",
+}
+
+def _should_ignore(path: Path) -> bool:
+    for part in path.parts:
+        if part in IGNORE_DIRS:
+            return True
+    if path.suffix in IGNORE_EXTENSIONS:
+        return True
+    return False
 
 
 
@@ -9,11 +39,29 @@ def run_scan(path: str, staged: bool, fail_threshold: int) -> int:
     files = _get_staged_files() if staged else Path(path).rglob("*")
 
     for file in files:
+        if _should_ignore(file):
+            continue
         if not _is_text_file(file):
             continue
 
-        # detectors will plug in here
-        pass
+        try:
+            with open(file, "r", encoding="utf-8", errors="ignore") as f:
+                for lineno, line in enumerate(f, start=1):
+                    matches = scan_line(line)
+                    for match in matches:
+                        findings.append(
+                            {
+                                "file": str(file),
+                                "line": lineno,
+                                "classification": "HIGH",
+                                "score": match["score"],
+                                "rule_id": match["rule_id"],
+                                "description": match["description"],
+                            }
+                        )
+        except Exception:
+            # never crash on unreadable files
+            continue
 
     print_report(findings)
 
