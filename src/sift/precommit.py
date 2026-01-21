@@ -7,7 +7,7 @@ def install_hook():
 
     hook_content = """#!/bin/sh
 echo "🔍 Running sift pre-commit scan..."
-sift scan --staged --fail-threshold 60
+python -m sift scan --staged --fail-threshold 60
 STATUS=$?
 
 if [ $STATUS -ne 0 ]; then

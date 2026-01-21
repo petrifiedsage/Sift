@@ -160,11 +160,12 @@ def run_scan(path: str, staged: bool, fail_threshold: int) -> int:
     max_score = max((f["score"] for f in final_findings), default=0)
 
     if max_score >= fail_threshold:
-        print("\n❌ Scan failed: high-risk secrets detected.")
-        print("👉 Resolve the issues above or add false positives to .siftignore\n")
+        print("\n[ERROR] Scan failed: high-risk secrets detected.")
+        print("[INFO] Resolve the issues above or add false positives to .siftignore\n")
+
         return 1
 
-    print("\n✅ Scan passed: no high-risk secrets found.")
+    print("\n[OK] Scan passed: no high-risk secrets found.")
     return 0
 
 
