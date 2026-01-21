@@ -1,0 +1,2 @@
+normal_variable = hello_world
+token = sk_test_51N9Zr1xYwPq8KZ0nZsM2HfA9Q

@@ -1,6 +1,9 @@
 from pathlib import Path
 from sift.reporters.console import print_report
 from sift.detectors.regex import scan_line
+from sift.scoring import compute_score, classify_score
+from sift.detectors.entropy import scan_line as entropy_scan
+
 
 IGNORE_DIRS = {
     ".git",
@@ -49,16 +52,47 @@ def run_scan(path: str, staged: bool, fail_threshold: int) -> int:
                 for lineno, line in enumerate(f, start=1):
                     matches = scan_line(line)
                     for match in matches:
+                        is_config = file.suffix in {".env", ".yaml", ".yml", ".json"}
+
+                        final_score = compute_score(
+                            match["score"],
+                            in_config_file=is_config,
+                        )
+
                         findings.append(
                             {
                                 "file": str(file),
                                 "line": lineno,
-                                "classification": "HIGH",
-                                "score": match["score"],
+                                "score": final_score,
+                                "classification": classify_score(final_score),
                                 "rule_id": match["rule_id"],
                                 "description": match["description"],
                             }
                         )
+
+                    # entropy detector
+                    entropy_matches = entropy_scan(line)
+                    for match in entropy_matches:
+                        is_config = file.suffix in {".env", ".yaml", ".yml", ".json"}
+
+                        final_score = compute_score(
+                            match["score"],
+                            in_config_file=is_config,
+                        )
+
+                        findings.append(
+                            {
+                                "file": str(file),
+                                "line": lineno,
+                                "score": final_score,
+                                "classification": classify_score(final_score),
+                                "rule_id": match["rule_id"],
+                                "description": match["description"],
+                                "entropy": match["entropy"],
+                            }
+                        )
+
+
         except Exception:
             # never crash on unreadable files
             continue
