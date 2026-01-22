@@ -2,8 +2,10 @@ name: Sift Security Scan
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ master ]
   pull_request:
+  workflow_dispatch:
+
 
 jobs:
   sift-scan:
