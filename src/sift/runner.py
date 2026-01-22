@@ -15,7 +15,7 @@ from sift.scoring import compute_score, classify_score
 IGNORE_DIRS = {
     ".git", "venv", ".venv", "__pycache__",
     "node_modules", "dist", "build",
-    ".pytest_cache", "tests", "src/sift/reporters",
+    ".pytest_cache", "tests", "reporters",".github",
 }
 
 IGNORE_FILES = {"SOURCES.txt"}

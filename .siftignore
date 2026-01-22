@@ -16,4 +16,5 @@ test_data/
 entropy_test.txt
 test_secrets.txt
 
+.github/
 
