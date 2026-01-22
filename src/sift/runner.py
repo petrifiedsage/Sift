@@ -15,7 +15,7 @@ from sift.scoring import compute_score, classify_score
 IGNORE_DIRS = {
     ".git", "venv", ".venv", "__pycache__",
     "node_modules", "dist", "build",
-    ".pytest_cache", "tests",
+    ".pytest_cache", "tests", "src/sift/reporters",
 }
 
 IGNORE_FILES = {"SOURCES.txt"}
@@ -23,7 +23,7 @@ IGNORE_FILES = {"SOURCES.txt"}
 IGNORE_EXTENSIONS = {
     ".pyc", ".pyo", ".exe", ".dll",
     ".zip", ".tar", ".gz", ".whl",
-    ".egg", ".md",
+    ".egg", ".md", ".sarif", ".json",
 }
 
 
