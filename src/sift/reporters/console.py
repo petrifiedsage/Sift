@@ -3,7 +3,7 @@ def print_report(findings):
         print("[OK] No secrets detected")
         return
 
-    print("\n[ERROR] Potential secrets detected:\n")
+    print("\n[INFO] Potential secrets detected:\n")
 
     for f in findings:
         detectors = []

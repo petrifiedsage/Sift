@@ -1,16 +1,21 @@
 from pathlib import Path
+import fnmatch
+import subprocess
+
 from sift.reporters.console import print_report
 from sift.detectors.regex import scan_line as regex_scan
 from sift.detectors.entropy import scan_line as entropy_scan
 from sift.scoring import compute_score, classify_score
-import fnmatch
 
 
-# ignore rules (already discussed)
+# ----------------------------
+# Ignore rules
+# ----------------------------
+
 IGNORE_DIRS = {
     ".git", "venv", ".venv", "__pycache__",
     "node_modules", "dist", "build",
-    ".pytest_cache",
+    ".pytest_cache", "tests",
 }
 
 IGNORE_FILES = {"SOURCES.txt"}
@@ -32,36 +37,6 @@ def _should_ignore(path: Path) -> bool:
         return True
     return False
 
-def _matches_siftignore(path: Path, patterns, base_path: Path) -> bool:
-    try:
-        rel_path = path.relative_to(base_path).as_posix()
-    except ValueError:
-        return False
-
-    for pattern in patterns:
-        # directory pattern
-        if pattern.endswith("/") and rel_path.startswith(pattern.rstrip("/")):
-            return True
-
-        if fnmatch.fnmatch(rel_path, pattern):
-            return True
-
-    return False
-
-
-
-def _merge_finding(findings, key, new_finding):
-    if key not in findings:
-        findings[key] = new_finding
-        findings[key]["detectors"] = {new_finding["rule_id"]}
-        return
-
-    existing = findings[key]
-    existing["detectors"].add(new_finding["rule_id"])
-
-    # boost score when multiple detectors agree
-    existing["score"] = min(existing["score"] + 15, 100)
-    existing["classification"] = classify_score(existing["score"])
 
 def _load_siftignore(base_path: Path):
     ignore_file = base_path / ".siftignore"
@@ -79,13 +54,68 @@ def _load_siftignore(base_path: Path):
     return patterns
 
 
-def run_scan(path: str, staged: bool, fail_threshold: int) -> int:
-    findings = {}  # key: (file, line)
+def _matches_siftignore(path: Path, patterns, base_path: Path) -> bool:
+    try:
+        rel_path = path.relative_to(base_path).as_posix().lstrip("./")
+    except ValueError:
+        return False
+
+    # exact filename match
+    if path.name in patterns:
+        return True
+
+    for pattern in patterns:
+        # directory pattern
+        if pattern.endswith("/") and rel_path.startswith(pattern.rstrip("/")):
+            return True
+
+        if fnmatch.fnmatch(rel_path, pattern):
+            return True
+
+    return False
+
+
+# ----------------------------
+# Finding merge logic
+# ----------------------------
+
+def _merge_finding(findings, key, new_finding):
+    if key not in findings:
+        findings[key] = new_finding
+        findings[key]["detectors"] = {new_finding["rule_id"]}
+        return
+
+    existing = findings[key]
+    existing["detectors"].add(new_finding["rule_id"])
+
+    # boost score when multiple detectors agree
+    existing["score"] = min(existing["score"] + 15, 100)
+    existing["classification"] = classify_score(existing["score"])
+
+
+# ----------------------------
+# Git helpers
+# ----------------------------
+
+def _get_staged_files():
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        capture_output=True,
+        text=True,
+    )
+    return [Path(p) for p in result.stdout.splitlines()]
+
+
+# ----------------------------
+# Main scan function
+# ----------------------------
+
+def run_scan(path: str, staged: bool, fail_threshold: int, return_findings=False):
+    findings = {}
     base_path = Path(path).resolve()
     ignore_patterns = _load_siftignore(base_path)
 
-
-    files = _get_staged_files() if staged else Path(path).rglob("*")
+    files = _get_staged_files() if staged else base_path.rglob("*")
 
     for file in files:
         if not file.is_file():
@@ -97,21 +127,15 @@ def run_scan(path: str, staged: bool, fail_threshold: int) -> int:
         if _matches_siftignore(file, ignore_patterns, base_path):
             continue
 
-
         try:
             with open(file, "r", encoding="utf-8", errors="ignore") as f:
                 for lineno, line in enumerate(f, start=1):
-
                     is_config = file.suffix in {".env", ".yaml", ".yml", ".json"}
 
-                    # =========================
-                    # 🔍 REGEX DETECTOR (HERE)
-                    # =========================
-                    regex_matches = regex_scan(line)
-                    for match in regex_matches:
+                    # -------- REGEX DETECTOR --------
+                    for match in regex_scan(line):
                         key = (str(file), lineno)
-
-                        final_score = compute_score(
+                        score = compute_score(
                             match["score"],
                             in_config_file=is_config,
                         )
@@ -119,22 +143,18 @@ def run_scan(path: str, staged: bool, fail_threshold: int) -> int:
                         finding = {
                             "file": str(file),
                             "line": lineno,
-                            "score": final_score,
-                            "classification": classify_score(final_score),
+                            "score": score,
+                            "classification": classify_score(score),
                             "rule_id": match["rule_id"],
                             "description": match["description"],
                         }
 
                         _merge_finding(findings, key, finding)
 
-                    # =========================
-                    # 🧠 ENTROPY DETECTOR (HERE)
-                    # =========================
-                    entropy_matches = entropy_scan(line)
-                    for match in entropy_matches:
+                    # -------- ENTROPY DETECTOR --------
+                    for match in entropy_scan(line):
                         key = (str(file), lineno)
-
-                        final_score = compute_score(
+                        score = compute_score(
                             match["score"],
                             in_config_file=is_config,
                         )
@@ -142,8 +162,8 @@ def run_scan(path: str, staged: bool, fail_threshold: int) -> int:
                         finding = {
                             "file": str(file),
                             "line": lineno,
-                            "score": final_score,
-                            "classification": classify_score(final_score),
+                            "score": score,
+                            "classification": classify_score(score),
                             "rule_id": match["rule_id"],
                             "description": match["description"],
                             "entropy": match["entropy"],
@@ -162,28 +182,12 @@ def run_scan(path: str, staged: bool, fail_threshold: int) -> int:
     if max_score >= fail_threshold:
         print("\n[ERROR] Scan failed: high-risk secrets detected.")
         print("[INFO] Resolve the issues above or add false positives to .siftignore\n")
+        exit_code = 1
+    else:
+        print("\n[OK] Scan passed: no high-risk secrets found.")
+        exit_code = 0
 
-        return 1
+    if return_findings:
+        return exit_code, final_findings
 
-    print("\n[OK] Scan passed: no high-risk secrets found.")
-    return 0
-
-
-
-
-def _get_staged_files():
-    import subprocess
-
-    result = subprocess.run(
-        ["git", "diff", "--cached", "--name-only"],
-        capture_output=True,
-        text=True,
-    )
-    return [Path(p) for p in result.stdout.splitlines()]
-
-
-def _is_text_file(path: Path) -> bool:
-    return path.is_file() and path.suffix not in {
-        ".png", ".jpg", ".jpeg", ".gif",
-        ".zip", ".exe", ".pdf"
-    }
+    return exit_code

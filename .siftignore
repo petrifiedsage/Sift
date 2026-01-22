@@ -11,3 +11,9 @@ test_data/
 
 # Local configs
 .env.local
+
+# Demo / test files
+entropy_test.txt
+test_secrets.txt
+
+
