@@ -1,1 +1,2 @@
-https://sarifweb.azurewebsites.net/
+#sarif_test.txt
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
