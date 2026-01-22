@@ -12,6 +12,7 @@ jobs:
     permissions:
       security-events: write
       contents: read
+      actions: read
 
     steps:
       - name: Checkout repository
@@ -32,6 +33,6 @@ jobs:
           python -m sift scan --format sarif --output sift.sarif || true
 
       - name: Upload SARIF to GitHub
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: sift.sarif
