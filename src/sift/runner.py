@@ -93,6 +93,15 @@ def _merge_finding(findings, key, new_finding):
     existing["classification"] = classify_score(existing["score"])
 
 
+def _relative_path(file_path: Path, base_path: Path) -> str:
+    """Convert absolute path to relative path for SARIF output."""
+    try:
+        return file_path.relative_to(base_path).as_posix()
+    except ValueError:
+        # If file is not relative to base_path, return as-is
+        return file_path.as_posix()
+
+
 # ----------------------------
 # Git helpers
 # ----------------------------
@@ -134,14 +143,15 @@ def run_scan(path: str, staged: bool, fail_threshold: int, return_findings=False
 
                     # -------- REGEX DETECTOR --------
                     for match in regex_scan(line):
-                        key = (str(file), lineno)
+                        rel_path = _relative_path(file, base_path)
+                        key = (rel_path, lineno)
                         score = compute_score(
                             match["score"],
                             in_config_file=is_config,
                         )
 
                         finding = {
-                            "file": str(file),
+                            "file": rel_path,
                             "line": lineno,
                             "score": score,
                             "classification": classify_score(score),
@@ -153,14 +163,15 @@ def run_scan(path: str, staged: bool, fail_threshold: int, return_findings=False
 
                     # -------- ENTROPY DETECTOR --------
                     for match in entropy_scan(line):
-                        key = (str(file), lineno)
+                        rel_path = _relative_path(file, base_path)
+                        key = (rel_path, lineno)
                         score = compute_score(
                             match["score"],
                             in_config_file=is_config,
                         )
 
                         finding = {
-                            "file": str(file),
+                            "file": rel_path,
                             "line": lineno,
                             "score": score,
                             "classification": classify_score(score),
