@@ -14,8 +14,18 @@
 
 ## Installation
 
+Sift isn’t on PyPI yet. Install it from the local source (optionally inside a venv):
+
 ```bash
-pip install sift
+# (optional) create & activate a venv in your target project
+python -m venv venv
+./venv/Scripts/activate  # Windows
+
+# install from local path
+pip install the-local-path
+
+# or editable so changes to Sift reflect immediately
+pip install -e the-local-path
 ```
 
 ## Usage
